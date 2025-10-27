@@ -33,30 +33,42 @@ stages:
       size: 14776
     - path: src/data/data_preprocessing.py
       hash: md5
-      md5: 97d29563eefbb1ed53b76a32c61269ea
-      size: 10964
+      md5: f3b126ce6f2e0b5ac6af5b0b04d3bcd8
+      size: 11251
     - path: src/data/data_quality_validator.py
       hash: md5
       md5: bdddc1a358f5323a87ad4deed616ee13
       size: 16696
     - path: src/data/enhanced_data_pipeline.py
       hash: md5
-      md5: 58f234d00c81e14411a58b17cbb878d6
-      size: 16743
+      md5: 41619b3a56f1f0c479b73e14706f9717
+      size: 23388
     params:
       params.yaml:
         data_preprocessing.enable_ab_testing: false
         data_preprocessing.enable_enhanced_pipeline: true
+        data_preprocessing.enable_mlflow_logging: true
         data_preprocessing.language_filter: en
         data_preprocessing.preprocessing_mode: conservative
         data_preprocessing.processing_strategy: balanced
         data_preprocessing.quality_threshold: 0.6
     outs:
-    - path: data/interim
+    - path: data/interim/test_processed.csv
       hash: md5
-      md5: 8e0774e6ef61d5c19f9a8c05174090d2.dir
-      size: 2561647
-      nfiles: 4
+      md5: 296668a19f551238b75887bd7a80e140
+      size: 507921
+    - path: data/interim/test_quality_report.json
+      hash: md5
+      md5: 232741c54ec81ce64d25f5b01d494fb2
+      size: 981
+    - path: data/interim/train_processed.csv
+      hash: md5
+      md5: 16a1339d31347ed699dfd7b57d35fb4a
+      size: 2051692
+    - path: data/interim/train_quality_report.json
+      hash: md5
+      md5: e11207a08ad90ef9636f334361b6ef13
+      size: 1053
   model_building:
     cmd: python src/model/model_building.py
     deps:

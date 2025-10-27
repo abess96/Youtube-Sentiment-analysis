@@ -119,7 +119,7 @@ def load_params():
         return {}
 
 def run_enhanced_preprocessing(train_data, test_data, params):
-    """Run enhanced preprocessing pipeline."""
+    """Run enhanced preprocessing pipeline with MLflow integration."""
     logger.info("Using enhanced data preprocessing pipeline")
     
     # Initialize enhanced pipeline with parameters
@@ -127,6 +127,7 @@ def run_enhanced_preprocessing(train_data, test_data, params):
     language_filter = params.get('language_filter', 'en')
     processing_strategy = params.get('processing_strategy', 'balanced')
     enable_ab_testing = params.get('enable_ab_testing', False)
+    enable_mlflow = params.get('enable_mlflow_logging', True)
     
     # Map string strategy to enum
     strategy_map = {
@@ -136,10 +137,11 @@ def run_enhanced_preprocessing(train_data, test_data, params):
     }
     strategy = strategy_map.get(processing_strategy, DataProcessingStrategy.BALANCED)
     
-    # Initialize pipeline
+    # Initialize pipeline with MLflow integration
     pipeline = EnhancedDataPipeline(
         quality_threshold=quality_threshold,
-        language_filter=language_filter
+        language_filter=language_filter,
+        enable_mlflow=enable_mlflow
     )
     
     # Process training data
@@ -148,7 +150,8 @@ def run_enhanced_preprocessing(train_data, test_data, params):
         train_data,
         text_column='clean_comment',
         strategy=strategy,
-        enable_ab_testing=enable_ab_testing
+        enable_ab_testing=enable_ab_testing,
+        run_name="data_preprocessing_train"
     )
     
     # Process test data (no A/B testing for test data)
@@ -157,10 +160,11 @@ def run_enhanced_preprocessing(train_data, test_data, params):
         test_data,
         text_column='clean_comment',
         strategy=strategy,
-        enable_ab_testing=False
+        enable_ab_testing=False,
+        run_name="data_preprocessing_test"
     )
     
-    # Save enhanced results
+    # Save enhanced results (will also log artifacts to MLflow if enabled)
     save_enhanced_data(train_results, test_results, './data')
     
     return train_results, test_results

@@ -9,6 +9,7 @@ data_preprocessing:
   preprocessing_mode: 'conservative'  # options: conservative, aggressive
   enable_ab_testing: false
   enable_enhanced_pipeline: true  # Set to false to use legacy preprocessing
+  enable_mlflow_logging: true  # Enable MLflow integration for data processing
 
 model_building:
   ngram_range: [1, 3]  

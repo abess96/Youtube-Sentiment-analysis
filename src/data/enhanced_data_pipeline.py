@@ -12,6 +12,10 @@ from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
 import os
 from pathlib import Path
+import json
+import mlflow
+import mlflow.sklearn
+from datetime import datetime
 
 from .data_quality_validator import DataQualityValidator
 from .advanced_preprocessing import AdvancedPreprocessor, PreprocessingMode
@@ -47,18 +51,35 @@ class EnhancedDataPipeline:
     and advanced preprocessing with A/B testing capabilities.
     """
     
-    def __init__(self, quality_threshold: float = 0.5, language_filter: str = 'en'):
+    def __init__(self, quality_threshold: float = 0.5, language_filter: str = 'en', enable_mlflow: bool = True):
         """
         Initialize the enhanced data pipeline.
         
         Args:
             quality_threshold: Minimum quality score for text acceptance (0-1)
             language_filter: Language code to filter for ('en' for English, None for all)
+            enable_mlflow: Whether to enable MLflow logging
         """
         self.validator = DataQualityValidator()
         self.preprocessor = AdvancedPreprocessor()
         self.quality_threshold = quality_threshold
         self.language_filter = language_filter
+        self.enable_mlflow = enable_mlflow
+        
+        # Initialize MLflow if enabled
+        if self.enable_mlflow:
+            try:
+                # Import MLflow config utility
+                import sys
+                sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+                from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+                
+                setup_mlflow()
+                self.experiment_id = get_or_create_experiment("data-processing-pipeline")
+                logger.info("MLflow integration enabled for data processing pipeline")
+            except Exception as e:
+                logger.warning(f"Failed to initialize MLflow: {e}")
+                self.enable_mlflow = False
         
         logger.info(f"Enhanced data pipeline initialized with quality threshold: {quality_threshold}")
     
@@ -67,7 +88,8 @@ class EnhancedDataPipeline:
         data: pd.DataFrame, 
         text_column: str = 'clean_comment',
         strategy: DataProcessingStrategy = DataProcessingStrategy.BALANCED,
-        enable_ab_testing: bool = False
+        enable_ab_testing: bool = False,
+        run_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process a complete dataset with quality validation and preprocessing.
@@ -77,6 +99,7 @@ class EnhancedDataPipeline:
             text_column: Name of the column containing text to process
             strategy: Processing strategy to use
             enable_ab_testing: Whether to create A/B test splits
+            run_name: Optional name for the MLflow run
             
         Returns:
             Dictionary containing processed data and metadata
@@ -86,33 +109,75 @@ class EnhancedDataPipeline:
         if text_column not in data.columns:
             raise ValueError(f"Column '{text_column}' not found in dataset")
         
-        # Step 1: Data Quality Validation
-        logger.info("Step 1: Performing data quality validation...")
-        quality_results = self._validate_dataset_quality(data, text_column)
+        # Start MLflow run if enabled
+        mlflow_run = None
+        if self.enable_mlflow:
+            try:
+                run_name = run_name or f"data_processing_{strategy.value}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                mlflow_run = mlflow.start_run(experiment_id=self.experiment_id, run_name=run_name)
+                
+                # Log parameters
+                mlflow.log_param("quality_threshold", self.quality_threshold)
+                mlflow.log_param("language_filter", self.language_filter)
+                mlflow.log_param("processing_strategy", strategy.value)
+                mlflow.log_param("enable_ab_testing", enable_ab_testing)
+                mlflow.log_param("text_column", text_column)
+                mlflow.log_param("original_dataset_size", len(data))
+                
+                # Log tags
+                mlflow.set_tag("pipeline_stage", "data_processing")
+                mlflow.set_tag("task", "enhanced_data_pipeline")
+                
+            except Exception as e:
+                logger.warning(f"Failed to start MLflow run: {e}")
         
-        # Step 2: Filter data based on quality and language
-        logger.info("Step 2: Filtering data based on quality criteria...")
-        filtered_data = self._filter_data(data, text_column, quality_results)
-        
-        # Step 3: Apply preprocessing based on strategy
-        logger.info("Step 3: Applying preprocessing...")
-        if enable_ab_testing:
-            processed_results = self._process_with_ab_testing(filtered_data, text_column, strategy)
-        else:
-            processed_results = self._process_single_strategy(filtered_data, text_column, strategy)
-        
-        # Step 4: Generate processing report
-        logger.info("Step 4: Generating processing report...")
-        report = self._generate_processing_report(data, filtered_data, processed_results, quality_results)
-        
-        return {
-            'processed_data': processed_results,
-            'quality_report': report,
-            'original_count': len(data),
-            'filtered_count': len(filtered_data),
-            'processing_strategy': strategy.value,
-            'ab_testing_enabled': enable_ab_testing
-        }
+        try:
+            # Step 1: Data Quality Validation
+            logger.info("Step 1: Performing data quality validation...")
+            quality_results = self._validate_dataset_quality(data, text_column)
+            
+            # Step 2: Filter data based on quality and language
+            logger.info("Step 2: Filtering data based on quality criteria...")
+            filtered_data = self._filter_data(data, text_column, quality_results)
+            
+            # Step 3: Apply preprocessing based on strategy
+            logger.info("Step 3: Applying preprocessing...")
+            if enable_ab_testing:
+                processed_results = self._process_with_ab_testing(filtered_data, text_column, strategy)
+            else:
+                processed_results = self._process_single_strategy(filtered_data, text_column, strategy)
+            
+            # Step 4: Generate processing report
+            logger.info("Step 4: Generating processing report...")
+            report = self._generate_processing_report(data, filtered_data, processed_results, quality_results)
+            
+            # Log metrics to MLflow
+            if self.enable_mlflow and mlflow_run:
+                self._log_metrics_to_mlflow(report, quality_results)
+            
+            result = {
+                'processed_data': processed_results,
+                'quality_report': report,
+                'original_count': len(data),
+                'filtered_count': len(filtered_data),
+                'processing_strategy': strategy.value,
+                'ab_testing_enabled': enable_ab_testing
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in dataset processing: {e}")
+            if self.enable_mlflow and mlflow_run:
+                mlflow.log_param("error", str(e))
+            raise
+        finally:
+            # End MLflow run
+            if self.enable_mlflow and mlflow_run:
+                try:
+                    mlflow.end_run()
+                except Exception as e:
+                    logger.warning(f"Failed to end MLflow run: {e}")
     
     def _validate_dataset_quality(self, data: pd.DataFrame, text_column: str) -> Dict[str, Any]:
         """Validate quality of entire dataset."""
@@ -323,70 +388,129 @@ class EnhancedDataPipeline:
         
         return report
     
+    def _log_metrics_to_mlflow(self, report: Dict[str, Any], quality_results: Dict[str, Any]) -> None:
+        """Log processing metrics to MLflow."""
+        try:
+            # Log processing summary metrics
+            processing_summary = report['processing_summary']
+            mlflow.log_metric("original_records", processing_summary['original_records'])
+            mlflow.log_metric("filtered_records", processing_summary['filtered_records'])
+            mlflow.log_metric("filter_rate", processing_summary['filter_rate'])
+            mlflow.log_metric("records_processed", processing_summary['records_processed'])
+            
+            # Log quality metrics
+            quality_metrics = report['quality_metrics']
+            mlflow.log_metric("average_quality_score", quality_metrics['average_quality_score'])
+            mlflow.log_metric("low_quality_filtered", quality_metrics['low_quality_filtered'])
+            
+            # Log spam detection metrics
+            spam_detection = report['spam_detection']
+            mlflow.log_metric("spam_records_detected", spam_detection['spam_records_detected'])
+            mlflow.log_metric("spam_rate", spam_detection['spam_rate'])
+            
+            # Log language distribution as parameters (since they're categorical)
+            for lang, count in report['language_distribution'].items():
+                mlflow.log_param(f"language_{lang}_count", count)
+            
+            # Log A/B testing metrics if available
+            if 'ab_testing' in report:
+                ab_metrics = report['ab_testing']
+                mlflow.log_metric("ab_group_a_size", ab_metrics['group_a_size'])
+                mlflow.log_metric("ab_group_b_size", ab_metrics['group_b_size'])
+                mlflow.log_param("ab_group_a_mode", ab_metrics['group_a_mode'])
+                mlflow.log_param("ab_group_b_mode", ab_metrics['group_b_mode'])
+            
+            # Log detailed quality statistics
+            quality_scores = quality_results['quality_scores']
+            if quality_scores:
+                mlflow.log_metric("quality_score_mean", np.mean(quality_scores))
+                mlflow.log_metric("quality_score_std", np.std(quality_scores))
+                mlflow.log_metric("quality_score_min", np.min(quality_scores))
+                mlflow.log_metric("quality_score_max", np.max(quality_scores))
+                mlflow.log_metric("quality_score_median", np.median(quality_scores))
+            
+            logger.info("Successfully logged metrics to MLflow")
+            
+        except Exception as e:
+            logger.warning(f"Failed to log metrics to MLflow: {e}")
+    
     def save_processed_data(
         self, 
         processed_results: Dict[str, Any], 
         output_dir: str = './data/interim',
         filename_prefix: str = 'enhanced_processed'
     ) -> None:
-        """Save processed data to files."""
+        """Save processed data to files and log artifacts to MLflow."""
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         
         processed_data = processed_results['processed_data']
+        saved_files = []
         
         if isinstance(processed_data, dict) and 'group_a' in processed_data:
             # Save A/B testing results
-            processed_data['group_a'].to_csv(
-                output_path / f'{filename_prefix}_group_a.csv', 
-                index=False
-            )
-            processed_data['group_b'].to_csv(
-                output_path / f'{filename_prefix}_group_b.csv', 
-                index=False
-            )
-            processed_data['combined'].to_csv(
-                output_path / f'{filename_prefix}_combined.csv', 
-                index=False
-            )
+            group_a_file = output_path / f'{filename_prefix}_group_a.csv'
+            group_b_file = output_path / f'{filename_prefix}_group_b.csv'
+            combined_file = output_path / f'{filename_prefix}_combined.csv'
+            
+            processed_data['group_a'].to_csv(group_a_file, index=False)
+            processed_data['group_b'].to_csv(group_b_file, index=False)
+            processed_data['combined'].to_csv(combined_file, index=False)
+            
+            saved_files.extend([group_a_file, group_b_file, combined_file])
             logger.info(f"A/B testing data saved to {output_path}")
         else:
             # Save single strategy results
-            processed_data.to_csv(
-                output_path / f'{filename_prefix}.csv', 
-                index=False
-            )
+            data_file = output_path / f'{filename_prefix}.csv'
+            processed_data.to_csv(data_file, index=False)
+            saved_files.append(data_file)
             logger.info(f"Processed data saved to {output_path}")
         
         # Save quality report
-        import json
-        with open(output_path / f'{filename_prefix}_report.json', 'w') as f:
+        report_file = output_path / f'{filename_prefix}_report.json'
+        with open(report_file, 'w') as f:
             json.dump(processed_results['quality_report'], f, indent=2)
+        saved_files.append(report_file)
+        
+        # Log artifacts to MLflow if enabled
+        if self.enable_mlflow:
+            try:
+                for file_path in saved_files:
+                    if file_path.exists():
+                        mlflow.log_artifact(str(file_path))
+                        logger.info(f"Logged artifact to MLflow: {file_path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to log artifacts to MLflow: {e}")
         
         logger.info("Processing report saved")
 
 
 def main():
-    """Example usage of the enhanced data pipeline."""
+    """Example usage of the enhanced data pipeline with MLflow integration."""
     try:
-        logger.info("Starting enhanced data processing pipeline...")
+        logger.info("Starting enhanced data processing pipeline with MLflow integration...")
         
-        # Initialize pipeline
-        pipeline = EnhancedDataPipeline(quality_threshold=0.6, language_filter='en')
+        # Initialize pipeline with MLflow enabled
+        pipeline = EnhancedDataPipeline(
+            quality_threshold=0.6, 
+            language_filter='en',
+            enable_mlflow=True
+        )
         
         # Load data
         train_data = pd.read_csv('./data/raw/train.csv')
         logger.info(f"Loaded {len(train_data)} training records")
         
-        # Process with A/B testing
+        # Process with A/B testing and MLflow tracking
         results = pipeline.process_dataset(
             train_data, 
             text_column='clean_comment',
             strategy=DataProcessingStrategy.BALANCED,
-            enable_ab_testing=True
+            enable_ab_testing=True,
+            run_name="enhanced_data_processing_train"
         )
         
-        # Save results
+        # Save results (will also log artifacts to MLflow)
         pipeline.save_processed_data(results, filename_prefix='train_enhanced')
         
         # Print summary
@@ -402,7 +526,7 @@ def main():
             print(f"A/B Group A size: {report['ab_testing']['group_a_size']}")
             print(f"A/B Group B size: {report['ab_testing']['group_b_size']}")
         
-        logger.info("Enhanced data processing completed successfully")
+        logger.info("Enhanced data processing completed successfully with MLflow tracking")
         
     except Exception as e:
         logger.error(f"Error in enhanced data processing: {e}")

@@ -24,8 +24,13 @@ stages:
     - data_preprocessing.preprocessing_mode
     - data_preprocessing.enable_ab_testing
     - data_preprocessing.enable_enhanced_pipeline
+    - data_preprocessing.enable_mlflow_logging
     outs:
-    - data/interim
+    - data/interim/train_processed.csv
+    - data/interim/test_processed.csv
+    metrics:
+    - data/interim/train_quality_report.json
+    - data/interim/test_quality_report.json
 
   model_building:
     cmd: python src/model/model_building.py
