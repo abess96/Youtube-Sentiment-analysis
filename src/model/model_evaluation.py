@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 from mlflow.models import infer_signature
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.mlflow_config import setup_mlflow, get_or_create_experiment
 
 # logging configuration
 logger = logging.getLogger('model_evaluation')
@@ -127,12 +130,11 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 
 def main():
+    # Setup MLflow with DagsHub configuration
+    setup_mlflow()
+    experiment_id = get_or_create_experiment("youtube-sentiment-analysis")
     
-    mlflow.set_tracking_uri("http://ec2-18-212-204-74.compute-1.amazonaws.com:5000/")
-
-    mlflow.set_experiment('dvc-pipeline-runs')
-    
-    with mlflow.start_run() as run:
+    with mlflow.start_run(experiment_id=experiment_id) as run:
         try:
             # Load parameters from YAML file
             root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))

@@ -14,6 +14,16 @@ stages:
     - data/raw/train.csv
     - data/raw/test.csv
     - src/data/data_preprocessing.py
+    - src/data/enhanced_data_pipeline.py
+    - src/data/data_quality_validator.py
+    - src/data/advanced_preprocessing.py
+    params:
+    - data_preprocessing.quality_threshold
+    - data_preprocessing.language_filter
+    - data_preprocessing.processing_strategy
+    - data_preprocessing.preprocessing_mode
+    - data_preprocessing.enable_ab_testing
+    - data_preprocessing.enable_enhanced_pipeline
     outs:
     - data/interim
 
@@ -42,6 +52,16 @@ stages:
     - src/model/model_evaluation.py
     outs:
     - experiment_info.json
+
+  data_quality_analysis:
+    cmd: python src/data/quality_analysis.py
+    deps:
+    - data/interim/train_quality_report.json
+    - data/interim/test_quality_report.json
+    - src/data/quality_analysis.py
+    outs:
+    - data/reports/quality_analysis.html
+    - data/reports/quality_metrics.json
 
   model_registration:
     cmd: python src/model/register_model.py

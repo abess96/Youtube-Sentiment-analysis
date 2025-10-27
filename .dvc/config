@@ -1,0 +1,5 @@
+[core]
+    analytics = false
+    autostage = true
+['remote "dagshub"']
+    url = https://dagshub.com/abess96/Youtube-Sentiment-analysis.dvc
