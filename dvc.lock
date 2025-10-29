@@ -161,3 +161,31 @@ stages:
       hash: md5
       md5: f85da791cc7a20042b55960ba7f061a4
       size: 3248
+  feature_extraction:
+    cmd: python src/features/extract_features.py
+    deps:
+    - path: data/interim/test_processed.csv
+      hash: md5
+      md5: 296668a19f551238b75887bd7a80e140
+      size: 507921
+    - path: data/interim/train_processed.csv
+      hash: md5
+      md5: 16a1339d31347ed699dfd7b57d35fb4a
+      size: 2051692
+    - path: src/features/extract_features.py
+      hash: md5
+      md5: ad49999f5208974691e063683943bf80
+      size: 4237
+    - path: src/features/feature_engine.py
+      hash: md5
+      md5: 0a1d4c6852ac0249fac33db360d6e44c
+      size: 58480
+    params:
+      params.yaml:
+        feature_extraction.embedding_dim: 100
+        feature_extraction.tfidf_max_features: 5000
+    outs:
+    - path: data/features/extracted_features.pkl
+      hash: md5
+      md5: a313b2eaceec54fc0f4128bbb50d4cff
+      size: 501020349

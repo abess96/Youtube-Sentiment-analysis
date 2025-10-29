@@ -35,7 +35,7 @@ stages:
   model_building:
     cmd: python src/model/model_building.py
     deps:
-    - data/interim/train_processed.csv
+    - data/features/selected_features.pkl
     - src/model/model_building.py
     params:
     - model_building.max_features
@@ -67,6 +67,32 @@ stages:
     outs:
     - data/reports/quality_analysis.html
     - data/reports/quality_metrics.json
+
+  feature_extraction:
+    cmd: python src/features/extract_features.py
+    deps:
+    - data/interim/train_processed.csv
+    - data/interim/test_processed.csv
+    - src/features/extract_features.py
+    - src/features/feature_engine.py
+    params:
+    - feature_extraction.tfidf_max_features
+    - feature_extraction.embedding_dim
+    outs:
+    - data/features/extracted_features.pkl
+
+  feature_selection:
+    cmd: python src/features/select_features.py
+    deps:
+    - data/features/extracted_features.pkl
+    - src/features/select_features.py
+    - src/features/feature_engine.py
+    params:
+    - feature_selection.n_features_to_select
+    - feature_selection.selection_method
+    outs:
+    - data/features/selected_features.pkl
+    - data/features/feature_ranking.csv
 
   model_registration:
     cmd: python src/model/register_model.py

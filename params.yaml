@@ -1,19 +1,30 @@
 data_ingestion:
-  test_size: 0.20
+  test_size: 0.2
 
 data_preprocessing:
-  # Enhanced preprocessing parameters
   quality_threshold: 0.6
   language_filter: 'en'
-  processing_strategy: 'balanced'  # options: quality_first, speed_first, balanced
-  preprocessing_mode: 'conservative'  # options: conservative, aggressive
+  processing_strategy: 'balanced'
+  preprocessing_mode: 'conservative'
   enable_ab_testing: false
-  enable_enhanced_pipeline: true  # Set to false to use legacy preprocessing
-  enable_mlflow_logging: true  # Enable MLflow integration for data processing
+  enable_enhanced_pipeline: true
+  enable_mlflow_logging: true
+
+feature_extraction:
+  tfidf_max_features: 5000
+  embedding_dim: 100
+  enable_word2vec: false
+  enable_fasttext: false
+  enable_transformers: false
+
+feature_selection:
+  n_features_to_select: 1000
+  selection_method: 'mutual_info'
+  enable_interaction_detection: false
 
 model_building:
-  ngram_range: [1, 3]  
-  max_features: 1000
-  learning_rate: 0.09
-  max_depth: 20
-  n_estimators: 367
+  max_features: 5000
+  ngram_range: [1, 2]
+  learning_rate: 0.1
+  max_depth: 7
+  n_estimators: 100

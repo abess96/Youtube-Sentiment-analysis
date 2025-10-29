@@ -9,10 +9,22 @@ dvc==3.53.0
 dvc[s3]
 python-dotenv==1.0.0
 nltk==3.9.1
-numpy==2.1.2
+numpy<2.0.0
 langdetect==1.0.9
 emoji==2.12.1
 pandas==2.2.3
 wordcloud==1.9.3
 seaborn==0.13.2
+scikit-learn==1.5.1
+scipy==1.14.1
+torch==2.4.0
+transformers==4.44.0
+# Note: gensim and fasttext require C++ compilation on Windows
+# For Python 3.12, these packages may have compatibility issues
+# Option 1: Comment out these lines and install manually with conda
+# Option 2: Use Python 3.11 instead of 3.12
+# Option 3: Skip these packages (FeatureSelector doesn't need them)
+# gensim==4.3.0
+# pybind11>=2.6.0
+# fasttext-wheel==0.9.2
 -e .
