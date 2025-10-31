@@ -32,42 +32,6 @@ stages:
     - data/interim/train_quality_report.json
     - data/interim/test_quality_report.json
 
-  model_building:
-    cmd: python src/model/model_building.py
-    deps:
-    - data/features/selected_features.pkl
-    - src/model/model_building.py
-    params:
-    - model_building.max_features
-    - model_building.ngram_range
-    - model_building.learning_rate
-    - model_building.max_depth
-    - model_building.n_estimators
-    outs:
-    - lgbm_model.pkl
-    - tfidf_vectorizer.pkl
-
-  model_evaluation:
-    cmd: python src/model/model_evaluation.py
-    deps:
-    - lgbm_model.pkl
-    - tfidf_vectorizer.pkl
-    - data/interim/train_processed.csv
-    - data/interim/test_processed.csv
-    - src/model/model_evaluation.py
-    outs:
-    - experiment_info.json
-
-  data_quality_analysis:
-    cmd: python src/data/quality_analysis.py
-    deps:
-    - data/interim/train_quality_report.json
-    - data/interim/test_quality_report.json
-    - src/data/quality_analysis.py
-    outs:
-    - data/reports/quality_analysis.html
-    - data/reports/quality_metrics.json
-
   feature_extraction:
     cmd: python src/features/extract_features.py
     deps:
@@ -94,8 +58,68 @@ stages:
     - data/features/selected_features.pkl
     - data/features/feature_ranking.csv
 
+  model_building:
+    cmd: python src/model/model_building.py
+    deps:
+    - data/features/selected_features.pkl
+    - src/model/model_building.py
+    params:
+    - model_building.max_features
+    - model_building.ngram_range
+    - model_building.learning_rate
+    - model_building.max_depth
+    - model_building.n_estimators
+    outs:
+    - lgbm_model.pkl
+    - tfidf_vectorizer.pkl
+
+  advanced_model_training:
+    cmd: python src/model/advanced_model_training.py
+    deps:
+    - data/features/selected_features.pkl
+    - src/model/advanced_model_training.py
+    - src/model/model_factory.py
+    - src/model/base_model.py
+    params:
+    - advanced_models.model_types
+    - advanced_models.enable_deep_learning
+    - advanced_models.enable_transformers
+    - advanced_models.enable_ensemble
+    - advanced_models.enable_hyperparameter_tuning
+    outs:
+    - models/trained_models/
+    metrics:
+    - models/metrics/training_metrics.json:
+        cache: false
+
+  model_evaluation:
+    cmd: python src/model/model_evaluation.py
+    deps:
+    - lgbm_model.pkl
+    - tfidf_vectorizer.pkl
+    - models/trained_models/
+    - data/interim/train_processed.csv
+    - data/interim/test_processed.csv
+    - src/model/model_evaluation.py
+    outs:
+    - experiment_info.json
+    metrics:
+    - models/metrics/evaluation_metrics.json:
+        cache: false
+
+  data_quality_analysis:
+    cmd: python src/data/quality_analysis.py
+    deps:
+    - data/interim/train_quality_report.json
+    - data/interim/test_quality_report.json
+    - src/data/quality_analysis.py
+    outs:
+    - data/reports/quality_analysis.html
+    - data/reports/quality_metrics.json
+
   model_registration:
     cmd: python src/model/register_model.py
     deps:
     - experiment_info.json
+    - models/trained_models/
     - src/model/register_model.py
