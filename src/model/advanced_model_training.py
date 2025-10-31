@@ -13,7 +13,13 @@ import logging
 import sys
 
 # Add src to path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / 'src'))
+
+# Set PYTHONPATH for pickle loading
+import os
+os.environ['PYTHONPATH'] = str(project_root) + os.pathsep + str(project_root / 'src')
 
 from src.model.model_factory import ModelFactory
 from src.model.ensemble_models import VotingEnsemble, StackingEnsemble
@@ -42,13 +48,62 @@ def load_features():
     """Load processed features."""
     logger.info("Loading features...")
     
-    with open('data/features/selected_features.pkl', 'rb') as f:
-        features_data = pickle.load(f)
+    try:
+        with open('data/features/selected_features.pkl', 'rb') as f:
+            features_data = pickle.load(f)
+    except ModuleNotFoundError as e:
+        logger.warning(f"Module import error when loading pickle: {e}")
+        logger.info("Attempting to load with custom unpickler...")
+        
+        # Add src to sys.path for pickle loading
+        import sys
+        from pathlib import Path
+        src_path = str(Path(__file__).parent.parent)
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+        
+        # Try loading again
+        with open('data/features/selected_features.pkl', 'rb') as f:
+            features_data = pickle.load(f)
     
-    X_train = features_data['X_train']
-    X_test = features_data['X_test']
-    y_train = features_data['y_train']
-    y_test = features_data['y_test']
+    # Debug: Check what keys are available
+    logger.info(f"Available keys in features_data: {list(features_data.keys()) if isinstance(features_data, dict) else type(features_data)}")
+    
+    # Handle different possible data structures
+    if isinstance(features_data, dict):
+        if 'X_train' in features_data:
+            X_train = features_data['X_train']
+            X_test = features_data['X_test']
+            y_train = features_data['y_train']
+            y_test = features_data['y_test']
+        elif 'train_features' in features_data:
+            X_train = features_data['train_features']
+            X_test = features_data['test_features']
+            y_train = features_data['train_labels']
+            y_test = features_data['test_labels']
+        else:
+            # Try to extract from nested structure
+            keys = list(features_data.keys())
+            logger.error(f"Unexpected data structure. Keys: {keys}")
+            raise KeyError(f"Cannot find expected keys in features data. Available: {keys}")
+    else:
+        # Handle tuple or other structures
+        if hasattr(features_data, '__len__') and len(features_data) == 4:
+            X_train, X_test, y_train, y_test = features_data
+        else:
+            raise ValueError(f"Unexpected data type: {type(features_data)}")
+    
+    # Normalize labels to ensure they start from 0
+    unique_labels = np.unique(np.concatenate([y_train, y_test]))
+    logger.info(f"Original label range: {unique_labels}")
+    
+    if unique_labels.min() != 0:
+        logger.info("Normalizing labels to start from 0...")
+        from sklearn.preprocessing import LabelEncoder
+        label_encoder = LabelEncoder()
+        y_train = label_encoder.fit_transform(y_train)
+        y_test = label_encoder.transform(y_test)
+        logger.info(f"Normalized labels: {np.unique(np.concatenate([y_train, y_test]))}")
     
     logger.info(f"Loaded features: Train={X_train.shape}, Test={X_test.shape}")
     

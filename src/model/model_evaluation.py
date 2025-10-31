@@ -192,6 +192,25 @@ def main():
             # Log confusion matrix
             log_confusion_matrix(cm, "Test Data")
 
+            # Save evaluation metrics for DVC
+            os.makedirs('models/metrics', exist_ok=True)
+            evaluation_metrics = {
+                'accuracy': report['accuracy'],
+                'macro_avg': {
+                    'precision': report['macro avg']['precision'],
+                    'recall': report['macro avg']['recall'],
+                    'f1-score': report['macro avg']['f1-score']
+                },
+                'weighted_avg': {
+                    'precision': report['weighted avg']['precision'],
+                    'recall': report['weighted avg']['recall'],
+                    'f1-score': report['weighted avg']['f1-score']
+                }
+            }
+            
+            with open('models/metrics/evaluation_metrics.json', 'w') as f:
+                json.dump(evaluation_metrics, f, indent=2)
+
             # Add important tags
             mlflow.set_tag("model_type", "LightGBM")
             mlflow.set_tag("task", "Sentiment Analysis")
