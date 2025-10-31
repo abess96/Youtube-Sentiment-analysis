@@ -97,6 +97,14 @@ advanced_models:
     cv_folds: 5
     optimization_budget: 'medium'  # low, medium, or high
 
+evaluation:
+  n_cv_folds: 5
+  drift_threshold: 0.05
+  fairness_threshold: 0.9
+  enable_bias_detection: true
+  enable_drift_monitoring: true
+  enable_comprehensive_metrics: true
+
 mlflow:
   experiment_name: 'sentiment_analysis'
   # tracking_uri is configured via .env file (MLFLOW_TRACKING_URI)

@@ -123,3 +123,30 @@ stages:
     - experiment_info.json
     - models/trained_models/
     - src/model/register_model.py
+
+  comprehensive_evaluation:
+    cmd: python src/model/evaluation_pipeline.py
+    deps:
+    - data/features/extracted_features.pkl
+    - data/interim/test_processed.csv
+    - lgbm_model.pkl
+    - src/model/evaluation_pipeline.py
+    - src/model/comprehensive_evaluator.py
+    - src/model/bias_detector.py
+    - src/model/drift_detector.py
+    params:
+    - evaluation.n_cv_folds
+    - evaluation.drift_threshold
+    - evaluation.fairness_threshold
+    - evaluation.enable_bias_detection
+    - evaluation.enable_drift_monitoring
+    outs:
+    - models/evaluation/evaluation_report.txt
+    - models/evaluation/drift_monitoring_history.json
+    metrics:
+    - models/evaluation/comprehensive_metrics.json:
+        cache: false
+    - models/evaluation/bias_report.json:
+        cache: false
+    - models/evaluation/drift_report.json:
+        cache: false
