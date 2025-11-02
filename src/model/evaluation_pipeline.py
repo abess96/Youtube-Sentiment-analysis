@@ -49,8 +49,8 @@ class EvaluationPipeline:
         with open('data/features/selected_features.pkl', 'rb') as f:
             features_data = pickle.load(f)
         
-        X_test = features_data['X_test']
-        y_test = features_data['y_test']
+        X_test = features_data['test_features']
+        y_test = features_data['test_labels']
         texts = test_data['clean_comment'].values
         
         logger.info(f"Loaded {len(y_test)} test samples")
@@ -59,8 +59,12 @@ class EvaluationPipeline:
     def load_model(self, model_path: str):
         """Load trained model."""
         logger.info(f"Loading model from {model_path}")
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+        import joblib
+        try:
+            model = joblib.load(model_path)
+        except:
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
         return model
     
     def run_comprehensive_evaluation(self, model, X_test, y_test) -> Dict[str, Any]:
@@ -146,6 +150,10 @@ class EvaluationPipeline:
         with open(output_path / 'drift_report.json', 'w') as f:
             json.dump(results['drift'], f, indent=2)
         
+        # Save drift monitoring history
+        with open(output_path / 'drift_monitoring_history.json', 'w') as f:
+            json.dump({'history': [results['drift']['monitoring_report']]}, f, indent=2)
+        
         # Save text report
         with open(output_path / 'evaluation_report.txt', 'w') as f:
             f.write(results['evaluation']['report'])
@@ -225,7 +233,11 @@ class EvaluationPipeline:
         
         # Load model
         if model_path is None:
-            model_path = 'models/trained_models/lightgbm_model.pkl'
+            from pathlib import Path
+            if Path('lgbm_model.pkl').exists():
+                model_path = 'lgbm_model.pkl'
+            else:
+                model_path = 'models/trained_models/lightgbm_model.pkl'
         model = self.load_model(model_path)
         
         # Get predictions

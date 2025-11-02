@@ -101,9 +101,7 @@ def main():
                 'test_features': selected_test,
                 'train_labels': feature_data['train_labels'],
                 'test_labels': feature_data['test_labels'],
-                'selected_feature_indices': selector.selected_features_,
-                'feature_ranking': ranking_df,
-                'selector': selector
+                'selected_feature_indices': selector.selected_features_
             }
             
             features_dir = Path('./data/features')
