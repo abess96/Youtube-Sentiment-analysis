@@ -115,3 +115,10 @@ mlflow:
 dvc:
   remote: 'default'
   enable_model_versioning: true
+
+enhanced_tracking:
+  model_type: 'random_forest'
+  n_estimators: 100
+  enable_lifecycle_management: true
+  enable_ab_testing: false
+  auto_promote_to_staging: true
