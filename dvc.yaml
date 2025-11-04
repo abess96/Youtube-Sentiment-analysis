@@ -162,7 +162,7 @@ stages:
     - enhanced_tracking.model_type
     - enhanced_tracking.n_estimators
     outs:
-    - models/trained_models/enhanced_tracked_model.pkl
+    - models/enhanced_tracked/
     metrics:
     - models/metrics/enhanced_tracking_metrics.json:
         cache: false

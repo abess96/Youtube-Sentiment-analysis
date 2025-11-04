@@ -18,7 +18,7 @@ feature_extraction:
   enable_transformers: false
 
 feature_selection:
-  n_features_to_select: 1000
+  n_features_to_select: 5000
   selection_method: 'mutual_info'
   enable_interaction_detection: false
 

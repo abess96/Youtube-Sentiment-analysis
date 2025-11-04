@@ -26,7 +26,19 @@ def load_features():
     """Load features from DVC pipeline."""
     with open('data/features/selected_features.pkl', 'rb') as f:
         data = pickle.load(f)
-    return data['X_train'], data['X_test'], data['y_train'], data['y_test']
+    
+    # Handle different data formats
+    if isinstance(data, dict):
+        if 'X_train' in data:
+            return data['X_train'], data['X_test'], data['y_train'], data['y_test']
+        elif 'train_features' in data:
+            return data['train_features'], data['test_features'], data['train_labels'], data['test_labels']
+    
+    # If data is tuple/list
+    if isinstance(data, (tuple, list)) and len(data) == 4:
+        return data[0], data[1], data[2], data[3]
+    
+    raise ValueError(f"Unexpected data format in selected_features.pkl. Keys: {data.keys() if isinstance(data, dict) else type(data)}")
 
 
 def load_params():
@@ -41,7 +53,20 @@ def train_and_track():
     logger.info("Starting enhanced tracking pipeline...")
     
     # Load data
-    X_train, X_test, y_train, y_test = load_features()
+    try:
+        X_train, X_test, y_train, y_test = load_features()
+    except Exception as e:
+        logger.error(f"Error loading features: {e}")
+        logger.info("Using extracted_features.pkl instead...")
+        with open('data/features/extracted_features.pkl', 'rb') as f:
+            data = pickle.load(f)
+        if isinstance(data, dict):
+            X_train = data.get('X_train', data.get('train_features'))
+            X_test = data.get('X_test', data.get('test_features'))
+            y_train = data.get('y_train', data.get('train_labels'))
+            y_test = data.get('y_test', data.get('test_labels'))
+        else:
+            X_train, X_test, y_train, y_test = data
     X_train_split, X_val, y_train_split, y_val = train_test_split(
         X_train, y_train, test_size=0.2, random_state=42
     )
@@ -144,7 +169,8 @@ def train_and_track():
         json.dump(metrics, f, indent=2)
     
     # Save model
-    with open('models/trained_models/enhanced_tracked_model.pkl', 'wb') as f:
+    Path('models/enhanced_tracked').mkdir(parents=True, exist_ok=True)
+    with open('models/enhanced_tracked/model.pkl', 'wb') as f:
         pickle.dump(model, f)
     
     logger.info(f"Model registered: v{model_version.version}")

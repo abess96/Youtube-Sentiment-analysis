@@ -201,6 +201,11 @@ class EnhancedMLflowTracker:
         
         cm = confusion_matrix(y_true, y_pred)
         
+        # Generate default labels if not provided
+        if labels is None:
+            unique_labels = sorted(np.unique(np.concatenate([y_true, y_pred])))
+            labels = [str(label) for label in unique_labels]
+        
         fig, ax = plt.subplots(figsize=(10, 8))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                    xticklabels=labels, yticklabels=labels, ax=ax)
