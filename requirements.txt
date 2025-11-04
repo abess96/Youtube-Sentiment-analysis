@@ -27,6 +27,9 @@ matplotlib>=3.5.0
 seaborn>=0.11.0
 pyyaml>=6.0
 tqdm>=4.62.0
+# Explainability and interpretability
+lime>=0.2.0
+shap>=0.42.0
 # Note: gensim and fasttext require C++ compilation on Windows
 # For Python 3.12, these packages may have compatibility issues
 # Option 1: Comment out these lines and install manually with conda
