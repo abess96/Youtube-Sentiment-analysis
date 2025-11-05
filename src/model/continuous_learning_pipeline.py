@@ -224,10 +224,19 @@ def run_continuous_learning_pipeline():
         with open("data/features/extracted_features.pkl", "rb") as f:
             features_data = pickle.load(f)
         
-        X_train = features_data['X_train']
-        y_train = features_data['y_train']
-        X_test = features_data['X_test']
-        y_test = features_data['y_test']
+        # Handle different pickle formats
+        if isinstance(features_data, dict):
+            X_train = features_data.get('X_train') or features_data.get('train_features')
+            y_train = features_data.get('y_train') or features_data.get('train_labels')
+            X_test = features_data.get('X_test') or features_data.get('test_features')
+            y_test = features_data.get('y_test') or features_data.get('test_labels')
+        else:
+            logger.error("Unexpected feature data format")
+            return
+        
+        if X_train is None or y_train is None:
+            logger.error(f"Could not find training data. Available keys: {list(features_data.keys())}")
+            return
         
         logger.info(f"Loaded {len(X_train)} training samples")
     except FileNotFoundError:

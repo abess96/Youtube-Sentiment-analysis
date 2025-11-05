@@ -170,8 +170,6 @@ stages:
   continuous_learning:
     cmd: python src/model/continuous_learning_example.py
     deps:
-    - data/features/extracted_features.pkl
-    - models/trained_models/
     - src/model/continuous_learning_example.py
     - src/model/incremental_learner.py
     - src/model/active_learner.py
