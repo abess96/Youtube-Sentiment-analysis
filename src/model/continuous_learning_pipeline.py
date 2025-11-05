@@ -16,6 +16,7 @@ from incremental_learner import IncrementalLearner
 from active_learner import ActiveLearner
 from auto_retrainer import AutoRetrainer
 from drift_detector import DriftDetector
+from continuous_learning_mlflow import ContinuousLearningMLflowTracker
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,12 +25,13 @@ logger = logging.getLogger(__name__)
 class ContinuousLearningPipeline:
     """Production continuous learning pipeline."""
     
-    def __init__(self, config_path: str = "params.yaml"):
+    def __init__(self, config_path: str = "params.yaml", enable_mlflow: bool = True):
         self.config = self._load_config(config_path)
         self.incremental_learner = None
         self.active_learner = None
         self.auto_retrainer = None
         self.drift_detector = None
+        self.mlflow_tracker = ContinuousLearningMLflowTracker() if enable_mlflow else None
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from params.yaml."""
@@ -102,6 +104,10 @@ class ContinuousLearningPipeline:
             results['drift_status'] = drift_report['overall_status']
             results['drift_detected'] = drift_report['data_drift_ks']['overall_drift_detected']
             
+            # Log to MLflow
+            if self.mlflow_tracker:
+                self.mlflow_tracker.log_drift_detection(drift_report)
+            
             # Generate alert if needed
             if drift_report['overall_status'] in ['warning', 'critical']:
                 alert = self.drift_detector.generate_alert(drift_report)
@@ -118,6 +124,10 @@ class ContinuousLearningPipeline:
                 logger.info(f"Retraining triggered: {reason}")
                 retrain_result = self.auto_retrainer.auto_retrain_pipeline(X_new, y_new)
                 results['retrain_result'] = retrain_result
+                
+                # Log to MLflow
+                if self.mlflow_tracker and retrain_result.get('retrained'):
+                    self.mlflow_tracker.log_retraining(retrain_result['metrics'], reason)
         
         return results
     
@@ -128,6 +138,14 @@ class ContinuousLearningPipeline:
             return
         
         self.incremental_learner.fit_streaming(X_new, y_new)
+        
+        # Log to MLflow
+        if self.mlflow_tracker:
+            self.mlflow_tracker.log_incremental_update(
+                self.incremental_learner.update_count,
+                self.incremental_learner.batch_size
+            )
+        
         logger.info(f"Model incrementally updated with {len(X_new)} samples")
     
     def query_for_labeling(self, X_pool, n_samples: int = 10) -> np.ndarray:
@@ -137,6 +155,16 @@ class ContinuousLearningPipeline:
             return np.random.choice(len(X_pool), n_samples, replace=False)
         
         indices = self.active_learner.query(X_pool, n_samples)
+        
+        # Log to MLflow
+        if self.mlflow_tracker:
+            iteration = len(self.active_learner.query_history)
+            self.mlflow_tracker.log_active_learning_query(
+                iteration,
+                self.active_learner.strategy,
+                n_samples
+            )
+        
         logger.info(f"Queried {n_samples} samples for labeling")
         return indices
     
@@ -206,8 +234,13 @@ def run_continuous_learning_pipeline():
         logger.error("Feature data not found. Run feature extraction first.")
         return
     
-    # Initialize pipeline
-    pipeline = ContinuousLearningPipeline()
+    # Initialize pipeline with MLflow
+    pipeline = ContinuousLearningPipeline(enable_mlflow=True)
+    
+    # Start MLflow run
+    if pipeline.mlflow_tracker:
+        pipeline.mlflow_tracker.start_tracking("continuous_learning_pipeline")
+    
     pipeline.initialize(X_train, y_train)
     
     # Simulate new data stream
@@ -239,6 +272,17 @@ def run_continuous_learning_pipeline():
     
     # Save state
     pipeline.save_state()
+    
+    # Log summary to MLflow
+    if pipeline.mlflow_tracker:
+        summary = {
+            'total_updates': pipeline.incremental_learner.update_count if pipeline.incremental_learner else 0,
+            'total_queries': len(pipeline.active_learner.query_history) if pipeline.active_learner else 0,
+            'drift_checks': len(pipeline.drift_detector.drift_history) if pipeline.drift_detector else 0,
+            'retraining_count': len(pipeline.auto_retrainer.retrain_history) if pipeline.auto_retrainer else 0
+        }
+        pipeline.mlflow_tracker.log_continuous_learning_summary(summary)
+        pipeline.mlflow_tracker.end_tracking()
     
     logger.info("\n=== Continuous Learning Pipeline Complete ===")
 

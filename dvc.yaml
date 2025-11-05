@@ -177,6 +177,7 @@ stages:
     - src/model/active_learner.py
     - src/model/auto_retrainer.py
     - src/model/drift_detector.py
+    - src/model/continuous_learning_mlflow.py
     params:
     - continuous_learning.enable_incremental_learning
     - continuous_learning.enable_active_learning
@@ -185,7 +186,7 @@ stages:
     - continuous_learning.active_learning.strategy
     - continuous_learning.auto_retraining.retrain_threshold
     outs:
-    - models/continuous_learning/
+    - models/continuous_learning/incremental_model.pkl
     metrics:
     - models/continuous_learning/retrain_history.json:
         cache: false
