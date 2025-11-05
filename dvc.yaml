@@ -166,3 +166,28 @@ stages:
     metrics:
     - models/metrics/enhanced_tracking_metrics.json:
         cache: false
+
+  continuous_learning:
+    cmd: python src/model/continuous_learning_example.py
+    deps:
+    - data/features/extracted_features.pkl
+    - models/trained_models/
+    - src/model/continuous_learning_example.py
+    - src/model/incremental_learner.py
+    - src/model/active_learner.py
+    - src/model/auto_retrainer.py
+    - src/model/drift_detector.py
+    params:
+    - continuous_learning.enable_incremental_learning
+    - continuous_learning.enable_active_learning
+    - continuous_learning.enable_auto_retraining
+    - continuous_learning.incremental_learning.batch_size
+    - continuous_learning.active_learning.strategy
+    - continuous_learning.auto_retraining.retrain_threshold
+    outs:
+    - models/continuous_learning/
+    metrics:
+    - models/continuous_learning/retrain_history.json:
+        cache: false
+    - models/continuous_learning/drift_history.json:
+        cache: false

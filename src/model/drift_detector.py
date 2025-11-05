@@ -101,7 +101,6 @@ class DriftDetector:
     
     def detect_prediction_drift(self, reference_predictions, current_predictions) -> Dict[str, Any]:
         """Detect drift in prediction distributions."""
-        # Handle negative labels by shifting to non-negative
         ref_preds = np.array(reference_predictions)
         curr_preds = np.array(current_predictions)
         
@@ -111,7 +110,7 @@ class DriftDetector:
             ref_preds = ref_preds - min_label
             curr_preds = curr_preds - min_label
         
-        # Chi-square test for categorical predictions
+        # Get counts
         ref_counts = np.bincount(ref_preds.astype(int))
         curr_counts = np.bincount(curr_preds.astype(int), minlength=len(ref_counts))
         
@@ -120,17 +119,20 @@ class DriftDetector:
         ref_counts = np.pad(ref_counts, (0, max_len - len(ref_counts)))
         curr_counts = np.pad(curr_counts, (0, max_len - len(curr_counts)))
         
-        # Avoid division by zero
-        ref_counts = ref_counts + 1e-10
-        curr_counts = curr_counts + 1e-10
+        # Normalize to same total for chi-square test
+        ref_freq = ref_counts / ref_counts.sum()
+        expected_counts = ref_freq * curr_counts.sum()
         
-        chi2_stat, p_value = stats.chisquare(curr_counts, ref_counts)
+        # Avoid zero expected frequencies
+        expected_counts = np.where(expected_counts < 1, 1, expected_counts)
+        
+        chi2_stat, p_value = stats.chisquare(curr_counts, expected_counts)
         
         return {
             'chi2_statistic': float(chi2_stat),
             'p_value': float(p_value),
             'drift_detected': bool(p_value < self.threshold),
-            'reference_distribution': (ref_counts / ref_counts.sum()).tolist(),
+            'reference_distribution': ref_freq.tolist(),
             'current_distribution': (curr_counts / curr_counts.sum()).tolist()
         }
     

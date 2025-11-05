@@ -122,3 +122,30 @@ enhanced_tracking:
   enable_lifecycle_management: true
   enable_ab_testing: false
   auto_promote_to_staging: true
+
+continuous_learning:
+  enable_incremental_learning: true
+  enable_active_learning: false
+  enable_auto_retraining: true
+  
+  # Incremental learning configuration
+  incremental_learning:
+    batch_size: 32
+    learning_rate: 'optimal'
+    update_frequency: 'daily'  # daily, weekly, or on_demand
+  
+  # Active learning configuration
+  active_learning:
+    strategy: 'uncertainty'  # uncertainty, margin, diversity, or random
+    query_batch_size: 10
+    labeling_budget: 100
+    min_confidence_threshold: 0.6
+  
+  # Auto retraining configuration
+  auto_retraining:
+    retrain_threshold: 0.05  # Performance drop threshold
+    min_samples_for_retrain: 100
+    scheduled_retrain_days: 30  # Retrain every N days
+    enable_drift_trigger: true
+    enable_performance_trigger: true
+    enable_scheduled_trigger: true
