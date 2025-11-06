@@ -32,10 +32,15 @@ def main():
     try:
         # Setup MLflow
         setup_mlflow()
-        experiment_id = get_or_create_experiment("feature-engineering-pipeline")
         
         # Load parameters
         params = load_params()
+        
+        # Get structured experiment name
+        with open('params.yaml', 'r') as f:
+            all_params = yaml.safe_load(f)
+        experiment_name = all_params.get('mlflow', {}).get('experiments', {}).get('feature_engineering', '02_Feature_Engineering')
+        experiment_id = get_or_create_experiment(experiment_name)
         
         with mlflow.start_run(experiment_id=experiment_id, run_name="feature_selection"):
             # Log parameters
