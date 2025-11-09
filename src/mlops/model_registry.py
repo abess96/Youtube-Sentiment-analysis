@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+from config.mlflow_config import setup_mlflow, get_or_create_experiment
 
 
 # logging configuration

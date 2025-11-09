@@ -400,3 +400,56 @@ class ModelFactory:
             'default_hyperparameters': default_config.hyperparameters,
             'base_class': model_class.__bases__[0].__name__
         }
+
+
+def main():
+    """Train basic model for DVC pipeline."""
+    import pickle
+    import yaml
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from lightgbm import LGBMClassifier
+    
+    logger.info("Starting basic model training...")
+    
+    # Load params
+    with open('params.yaml', 'r') as f:
+        params = yaml.safe_load(f)
+    
+    model_params = params.get('model_building', {})
+    
+    # Load data
+    with open('data/features/selected_features.pkl', 'rb') as f:
+        features_data = pickle.load(f)
+    
+    X_train = features_data['train_features']
+    y_train = features_data['train_labels']
+    
+    # Create and train LightGBM model directly
+    model = LGBMClassifier(
+        n_estimators=model_params.get('n_estimators', 100),
+        max_depth=model_params.get('max_depth', 7),
+        learning_rate=model_params.get('learning_rate', 0.1),
+        random_state=42,
+        n_jobs=-1,
+        verbose=-1
+    )
+    
+    model.fit(X_train, y_train)
+    logger.info("Model training completed")
+    
+    # Save model
+    with open('lgbm_model.pkl', 'wb') as f:
+        pickle.dump(model, f)
+    logger.info("Model saved to lgbm_model.pkl")
+    
+    # Create and save TF-IDF vectorizer (placeholder)
+    vectorizer = TfidfVectorizer(max_features=model_params.get('max_features', 5000))
+    with open('tfidf_vectorizer.pkl', 'wb') as f:
+        pickle.dump(vectorizer, f)
+    logger.info("Vectorizer saved to tfidf_vectorizer.pkl")
+    
+    logger.info("Basic model training completed")
+
+
+if __name__ == "__main__":
+    main()

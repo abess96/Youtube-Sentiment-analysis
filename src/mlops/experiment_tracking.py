@@ -452,3 +452,72 @@ class ExperimentComparator:
             f.write(report_html)
         
         logger.info(f"Comparison report generated: {output_path}")
+
+
+def main():
+    """Main function for DVC pipeline - demonstrates enhanced tracking."""
+    import pickle
+    import yaml
+    from pathlib import Path
+    
+    logger.info("Starting enhanced experiment tracking...")
+    
+    # Load params
+    with open('params.yaml', 'r') as f:
+        params = yaml.safe_load(f)
+    
+    # Get structured experiment name
+    experiment_name = params.get('mlflow', {}).get('experiments', {}).get('experiment_tracking', '07_Experiment_Tracking')
+    
+    # Initialize tracker
+    tracker = EnhancedMLflowTracker(experiment_name=experiment_name)
+    
+    # Load features for demonstration
+    with open('data/features/selected_features.pkl', 'rb') as f:
+        features_data = pickle.load(f)
+    
+    X_train = features_data['train_features']
+    y_train = features_data['train_labels']
+    
+    # Start a tracking run
+    with tracker.start_run(run_name="enhanced_tracking_demo") as run:
+        # Log dataset info
+        tracker.log_dataset_info(X_train, y_train, dataset_name='train')
+        
+        # Log system metrics
+        tracker.log_system_metrics()
+        
+        # Log comprehensive metrics
+        demo_metrics = {
+            'tracking_enabled': 1,
+            'features_tracked': X_train.shape[1],
+            'samples_tracked': len(X_train)
+        }
+        tracker.log_comprehensive_metrics(demo_metrics)
+        
+        logger.info(f"Enhanced tracking run completed: {run.info.run_id}")
+    
+    # Create output directory
+    output_dir = Path('models/enhanced_tracked')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save tracking metrics
+    metrics_file = output_dir / 'tracking_metrics.json'
+    import json
+    with open(metrics_file, 'w') as f:
+        json.dump({
+            'experiment_name': experiment_name,
+            'run_id': run.info.run_id,
+            'status': 'completed'
+        }, f, indent=2)
+    
+    # Save metrics for DVC
+    Path('models/metrics').mkdir(parents=True, exist_ok=True)
+    with open('models/metrics/enhanced_tracking_metrics.json', 'w') as f:
+        json.dump(demo_metrics, f, indent=2)
+    
+    logger.info("Enhanced experiment tracking completed")
+
+
+if __name__ == "__main__":
+    main()

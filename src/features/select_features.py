@@ -15,7 +15,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from features.feature_engine import FeatureSelector
-from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+from config.mlflow_config import setup_mlflow, get_or_create_experiment
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

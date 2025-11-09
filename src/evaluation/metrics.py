@@ -14,7 +14,7 @@ import json
 from mlflow.models import infer_signature
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+from config.mlflow_config import setup_mlflow, get_or_create_experiment
 
 # logging configuration
 logger = logging.getLogger('model_evaluation')
@@ -132,34 +132,36 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 def main():
     # Setup MLflow with DagsHub configuration
     setup_mlflow()
-    experiment_id = get_or_create_experiment("youtube-sentiment-analysis")
+    
+    # Load params to get structured experiment name
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+    params = load_params(os.path.join(root_dir, 'params.yaml'))
+    experiment_name = params.get('mlflow', {}).get('experiments', {}).get('model_evaluation', '04_Model_Evaluation')
+    experiment_id = get_or_create_experiment(experiment_name)
     
     with mlflow.start_run(experiment_id=experiment_id) as run:
         try:
-            # Load parameters from YAML file
-            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
-            params = load_params(os.path.join(root_dir, 'params.yaml'))
+            # Parameters already loaded above
 
             # Log parameters
             for key, value in params.items():
                 mlflow.log_param(key, value)
             
-            # Load model and vectorizer
+            # Load model
             model = load_model(os.path.join(root_dir, 'lgbm_model.pkl'))
-            vectorizer = load_vectorizer(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
+            
+            # Load test features from selected_features.pkl
+            with open(os.path.join(root_dir, 'data/features/selected_features.pkl'), 'rb') as f:
+                features_data = pickle.load(f)
+            
+            X_test = features_data['test_features']
+            y_test = features_data['test_labels']
 
-            # Load test data for signature inference
-            test_data = load_data(os.path.join(root_dir, 'data/interim/test_processed.csv'))
-
-            # Prepare test data
-            X_test_tfidf = vectorizer.transform(test_data['clean_comment'].values)
-            y_test = test_data['category'].values
-
-            # Create a DataFrame for signature inference (using first few rows as an example)
-            input_example = pd.DataFrame(X_test_tfidf.toarray()[:5], columns=vectorizer.get_feature_names_out())  # <--- Added for signature
+            # Create input example for signature
+            input_example = pd.DataFrame(X_test[:5])
 
             # Infer the signature
-            signature = infer_signature(input_example, model.predict(X_test_tfidf[:5]))  # <--- Added for signature
+            signature = infer_signature(input_example, model.predict(X_test[:5]))
 
             # Log model with signature
             mlflow.sklearn.log_model(
@@ -174,11 +176,8 @@ def main():
             model_path = f"{artifact_uri}/lgbm_model"
             save_model_info(run.info.run_id, model_path, 'experiment_info.json')
 
-            # Log the vectorizer as an artifact
-            mlflow.log_artifact(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
-
             # Evaluate model and get metrics
-            report, cm = evaluate_model(model, X_test_tfidf, y_test)
+            report, cm = evaluate_model(model, X_test, y_test)
 
             # Log classification report metrics for the test data
             for label, metrics in report.items():
