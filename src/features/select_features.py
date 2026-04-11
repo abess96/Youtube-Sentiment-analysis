@@ -15,7 +15,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from features.feature_engine import FeatureSelector
-from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+from config.mlflow_config import setup_mlflow, get_or_create_experiment
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -32,10 +32,15 @@ def main():
     try:
         # Setup MLflow
         setup_mlflow()
-        experiment_id = get_or_create_experiment("feature-engineering-pipeline")
         
         # Load parameters
         params = load_params()
+        
+        # Get structured experiment name
+        with open('params.yaml', 'r') as f:
+            all_params = yaml.safe_load(f)
+        experiment_name = all_params.get('mlflow', {}).get('experiments', {}).get('feature_engineering', '02_Feature_Engineering')
+        experiment_id = get_or_create_experiment(experiment_name)
         
         with mlflow.start_run(experiment_id=experiment_id, run_name="feature_selection"):
             # Log parameters

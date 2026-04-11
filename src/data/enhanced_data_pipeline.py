@@ -71,12 +71,21 @@ class EnhancedDataPipeline:
             try:
                 # Import MLflow config utility
                 import sys
+                import yaml
                 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-                from utils.mlflow_config import setup_mlflow, get_or_create_experiment
+                from config.mlflow_config import setup_mlflow, get_or_create_experiment
+                
+                # Load experiment name from params.yaml
+                try:
+                    with open('params.yaml', 'r') as f:
+                        params = yaml.safe_load(f)
+                    experiment_name = params.get('mlflow', {}).get('experiments', {}).get('data_preprocessing', '01_Data_Preprocessing')
+                except:
+                    experiment_name = '01_Data_Preprocessing'
                 
                 setup_mlflow()
-                self.experiment_id = get_or_create_experiment("data-processing-pipeline")
-                logger.info("MLflow integration enabled for data processing pipeline")
+                self.experiment_id = get_or_create_experiment(experiment_name)
+                logger.info(f"MLflow integration enabled for data processing pipeline: {experiment_name}")
             except Exception as e:
                 logger.warning(f"Failed to initialize MLflow: {e}")
                 self.enable_mlflow = False

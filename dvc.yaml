@@ -59,10 +59,10 @@ stages:
     - data/features/feature_ranking.csv
 
   model_building:
-    cmd: python src/model/model_building.py
+    cmd: python src/models/base/model_factory.py
     deps:
     - data/features/selected_features.pkl
-    - src/model/model_building.py
+    - src/models/base/model_factory.py
     params:
     - model_building.max_features
     - model_building.ngram_range
@@ -74,12 +74,12 @@ stages:
     - tfidf_vectorizer.pkl
 
   advanced_model_training:
-    cmd: python src/model/advanced_model_training.py
+    cmd: python src/training/trainer.py
     deps:
     - data/features/selected_features.pkl
-    - src/model/advanced_model_training.py
-    - src/model/model_factory.py
-    - src/model/base_model.py
+    - src/training/trainer.py
+    - src/models/base/model_factory.py
+    - src/models/base/base_model.py
     params:
     - advanced_models.model_types
     - advanced_models.enable_deep_learning
@@ -93,14 +93,14 @@ stages:
         cache: false
 
   model_evaluation:
-    cmd: python src/model/model_evaluation.py
+    cmd: python src/evaluation/metrics.py
     deps:
     - lgbm_model.pkl
     - tfidf_vectorizer.pkl
     - models/trained_models/
     - data/interim/train_processed.csv
     - data/interim/test_processed.csv
-    - src/model/model_evaluation.py
+    - src/evaluation/metrics.py
     outs:
     - experiment_info.json
     metrics:
@@ -118,22 +118,22 @@ stages:
     - data/reports/quality_metrics.json
 
   model_registration:
-    cmd: python src/model/register_model.py
+    cmd: python src/mlops/model_registry.py
     deps:
     - experiment_info.json
     - models/trained_models/
-    - src/model/register_model.py
+    - src/mlops/model_registry.py
 
   comprehensive_evaluation:
-    cmd: python src/model/evaluation_pipeline.py
+    cmd: python src/evaluation/evaluation_pipeline.py
     deps:
     - data/features/extracted_features.pkl
     - data/interim/test_processed.csv
     - lgbm_model.pkl
-    - src/model/evaluation_pipeline.py
-    - src/model/comprehensive_evaluator.py
-    - src/model/bias_detector.py
-    - src/model/drift_detector.py
+    - src/evaluation/evaluation_pipeline.py
+    - src/evaluation/evaluator.py
+    - src/evaluation/bias_detection.py
+    - src/evaluation/drift_detection.py
     params:
     - evaluation.n_cv_folds
     - evaluation.drift_threshold
@@ -152,12 +152,11 @@ stages:
         cache: false
 
   enhanced_tracking:
-    cmd: python src/model/train_with_enhanced_tracking.py
+    cmd: python src/mlops/experiment_tracking.py
     deps:
     - data/features/selected_features.pkl
-    - src/model/train_with_enhanced_tracking.py
-    - src/model/enhanced_mlflow_tracker.py
-    - src/model/model_lifecycle_manager.py
+    - src/mlops/experiment_tracking.py
+    - src/mlops/lifecycle_manager.py
     params:
     - enhanced_tracking.model_type
     - enhanced_tracking.n_estimators
@@ -168,14 +167,14 @@ stages:
         cache: false
 
   continuous_learning:
-    cmd: python src/model/continuous_learning_example.py
+    cmd: python src/examples/continuous_learning_example.py
     deps:
-    - src/model/continuous_learning_example.py
-    - src/model/incremental_learner.py
-    - src/model/active_learner.py
-    - src/model/auto_retrainer.py
-    - src/model/drift_detector.py
-    - src/model/continuous_learning_mlflow.py
+    - src/examples/continuous_learning_example.py
+    - src/training/incremental_learner.py
+    - src/training/active_learner.py
+    - src/training/auto_retrainer.py
+    - src/evaluation/drift_detection.py
+    - src/training/continuous_learning.py
     params:
     - continuous_learning.enable_incremental_learning
     - continuous_learning.enable_active_learning

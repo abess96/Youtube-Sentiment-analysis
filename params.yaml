@@ -106,7 +106,19 @@ evaluation:
   enable_comprehensive_metrics: true
 
 mlflow:
-  experiment_name: 'sentiment_analysis'
+  # Structured experiment names for clear UI organization
+  experiments:
+    data_preprocessing: '01_Data_Preprocessing'
+    feature_engineering: '02_Feature_Engineering'
+    model_training: '03_Model_Training'
+    model_evaluation: '04_Model_Evaluation'
+    model_registry: '05_Model_Registry'
+    continuous_learning: '06_Continuous_Learning'
+    experiment_tracking: '07_Experiment_Tracking'
+  
+  # Legacy experiment name (for backward compatibility)
+  experiment_name: '03_Model_Training'
+  
   # tracking_uri is configured via .env file (MLFLOW_TRACKING_URI)
   # For DagsHub: set MLFLOW_TRACKING_URI and DAGSHUB_PAT in .env
   # For local: leave empty or set to './mlruns'
